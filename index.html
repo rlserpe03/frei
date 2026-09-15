@@ -1,1 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pré-Conselho de Classe (Online)</title>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-hover: #1d4ed8;
+            --bg: #f3f4f6;
+            --card-bg: #ffffff;
+            --text: #1f2937;
+            --border: #d1d5db;
+        }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .header-title {
+            text-align: center;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: #dc2626;
+        }
+
+        .btn-danger:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-secondary {
+            background-color: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background-color: #374151;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .nav-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .nav-bar button {
+            background-color: white;
+            color: var(--primary);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            margin-bottom: 8px;
+            background: #fff;
+        }
+
+        .response-card {
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white;
+                padding: 0;
+            }
+            .card {
+                box-shadow: none;
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- TELA DE LOGIN -->
+    <div id="login-screen" class="card" style="max-width: 400px; margin: 80px auto;">
+        <h2 style="text-align: center;">Acesso ao Sistema</h2>
+        <p style="text-align: center; color: #666; font-size: 12px; margin-bottom: 15px;">
+            Pré-Conselho de Classe
+        </p>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Usuário</label>
+                <input type="text" id="username" required placeholder="Seu usuário cadastrado">
+            </div>
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" style="width: 100%;">Entrar</button>
+        </form>
+    </div>
+
+    <!-- PAINEL PRINCIPAL (APÓS LOGIN) -->
+    <div id="app-screen" class="hidden">
+        
+        <!-- BARRA DE NAVEGAÇÃO -->
+        <div class="nav-bar no-print">
+            <span id="user-info">Bem-vindo(a)!</span>
+            <button onclick="logout()">Sair</button>
+        </div>
+
+        <!-- CABEÇALHO OFICIAL DA ESCOLA -->
+        <div class="card header-title">
+            <h2>ESCOLA ESTADUAL DO CAMPO FREI GRACIANO DROESSLER</h2>
+            <h3>ENSINO FUNDAMENTAL EM TEMPO INTEGRAL</h3>
+            <h4>FICHA INDIVIDUAL - PRÉ-CONSELHO DE CLASSE</h4>
+        </div>
+
+        <!-- VISÃO DO DIRETOR -->
+        <div id="director-view" class="hidden">
+            
+            <!-- Cadastrar e Gerenciar Professores -->
+            <div class="card">
+                <h3>Cadastrar Novo Professor</h3>
+                <form id="add-prof-form" onsubmit="addProfessor(event)">
+                    <div class="grid-3">
+                        <input type="text" id="new-prof-nome" placeholder="Nome Completo" required>
+                        <input type="text" id="new-prof-user" placeholder="Usuário para login" required>
+                        <input type="password" id="new-prof-pass" placeholder="Senha" required>
+                    </div>
+                    <button type="submit" style="margin-top: 10px;">Cadastrar Professor</button>
+                </form>
+                <hr style="margin: 20px 0;">
+                <h4>Professores Cadastrados:</h4>
+                <div id="professores-list" style="margin-top: 10px;">Carregando...</div>
+            </div>
+
+            <!-- Gerenciar Turmas -->
+            <div class="card">
+                <h3>Gerenciar Turmas</h3>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <input type="text" id="new-turma-input" placeholder="Nome da turma (Ex: 6º Ano A)">
+                    <button onclick="addTurma()">Adicionar</button>
+                </div>
+                <div id="turmas-list">Carregando...</div>
+            </div>
+
+            <!-- Gerenciar Perguntas do Formulário -->
+            <div class="card">
+                <h3>Gerenciar Perguntas do Pré-Conselho</h3>
+                <div class="form-group">
+                    <label for="new-secao-input">Categoria / Seção</label>
+                    <input type="text" id="new-secao-input" placeholder="Ex: 1. PANORAMA DA TURMA">
+                </div>
+                <div class="form-group">
+                    <label for="new-pergunta-input">Pergunta</label>
+                    <input type="text" id="new-pergunta-input" placeholder="Digite a pergunta do conselho...">
+                </div>
+                <button onclick="addPergunta()">Adicionar Pergunta</button>
+                <hr style="margin: 20px 0;">
+                <h4>Perguntas Cadastradas:</h4>
+                <div id="perguntas-list" style="margin-top: 10px;">Carregando...</div>
+            </div>
+
+            <!-- Visualizar Respostas -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3>Registros Efetuados pelos Professores</h3>
+                    <button class="no-print btn-secondary" onclick="window.print()">Imprimir Relatório</button>
+                </div>
+                <div id="respostas-list" style="margin-top: 15px;">Carregando...</div>
+            </div>
+
+        </div>
+
+        <!-- VISÃO DO PROFESSOR -->
+        <div id="teacher-view" class="hidden">
+            <div class="card">
+                <form id="pre-conselho-form">
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="select-turma">Turma:</label>
+                            <select id="select-turma" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="prof-nome">Professor(a):</label>
+                            <input type="text" id="prof-nome" required readonly style="background-color: #e5e7eb;">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="componente">Componente Curricular:</label>
+                            <input type="text" id="componente" required placeholder="Ex: Matemática, Português...">
+                        </div>
+                        <div class="form-group">
+                            <label for="data-registro">Data:</label>
+                            <input type="date" id="data-registro" required>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 20px 0;">
+
+                    <!-- Área Onde as Perguntas São Geradas Dinamicamente -->
+                    <div id="form-perguntas-container">Carregando perguntas...</div>
+
+                    <button type="submit" style="width: 100%; margin-top: 20px; font-size: 16px;">Salvar Registro do Pré-Conselho</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // --- CONFIGURAÇÃO DO SUPABASE ---
+    // Substitua os valores abaixo com as credenciais do seu projeto Supabase
+    const SUPABASE_URL = "https://kxqcfyilikeqqzcucork.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_IoFCy0Eh-etjqtoe_CFmFg_lnLERlAJ";
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentUser = null;
+    let perguntasGlobais = [];
+
+    // --- AUTENTICAÇÃO ---
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const user = document.getElementById('username').value.trim();
+        const pass = document.getElementById('password').value.trim();
+
+        const { data, error } = await _supabase
+            .from('usuarios')
+            .select('*')
+            .eq('usuario', user)
+            .eq('senha', pass)
+            .single();
+
+        if (error || !data) {
+            alert('Usuário ou senha incorretos!');
+            return;
+        }
+
+        currentUser = data;
+        showDashboard();
+    });
+
+    function logout() {
+        currentUser = null;
+        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('app-screen').classList.add('hidden');
+        document.getElementById('login-form').reset();
+    }
+
+    async function showDashboard() {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        document.getElementById('user-info').innerText = `Logado como: ${currentUser.nome} (${currentUser.cargo === 'diretor' ? 'Diretor' : 'Professor'})`;
+
+        if (currentUser.cargo === 'diretor') {
+            document.getElementById('director-view').classList.remove('hidden');
+            document.getElementById('teacher-view').classList.add('hidden');
+            loadDirectorPanel();
+        } else {
+            document.getElementById('teacher-view').classList.remove('hidden');
+            document.getElementById('director-view').classList.add('hidden');
+            loadTeacherPanel();
+        }
+    }
+
+    // --- PAINEL DO DIRETOR ---
+    function loadDirectorPanel() {
+        loadProfessores();
+        loadTurmas();
+        loadPerguntas();
+        loadRespostas();
+    }
+
+    // PROFESSORES
+    async function loadProfessores() {
+        const { data, error } = await _supabase
+            .from('usuarios')
+            .select('*')
+            .eq('cargo', 'professor')
+            .order('nome');
+
+        const list = document.getElementById('professores-list');
+        if (error || !data || data.length === 0) {
+            list.innerHTML = '<p>Nenhum professor cadastrado.</p>';
+            return;
+        }
+
+        list.innerHTML = data.map(p => `
+            <div class="list-item">
+                <div>
+                    <strong>${p.nome}</strong><br>
+                    <small>Usuário: <code>${p.usuario}</code></small>
+                </div>
+                <button class="btn-danger" onclick="deleteProfessor(${p.id})">Excluir</button>
+            </div>
+        `).join('');
+    }
+
+    async function addProfessor(e) {
+        e.preventDefault();
+        const nome = document.getElementById('new-prof-nome').value.trim();
+        const usuario = document.getElementById('new-prof-user').value.trim();
+        const senha = document.getElementById('new-prof-pass').value.trim();
+
+        const { error } = await _supabase.from('usuarios').insert([{
+            nome, usuario, senha, cargo: 'professor'
+        }]);
+
+        if (error) {
+            alert('Erro ao cadastrar professor: ' + error.message);
+        } else {
+            document.getElementById('add-prof-form').reset();
+            loadProfessores();
+        }
+    }
+
+    async function deleteProfessor(id) {
+        if (confirm('Deseja excluir este professor?')) {
+            await _supabase.from('usuarios').delete().eq('id', id);
+            loadProfessores();
+        }
+    }
+
+    // TURMAS
+    async function loadTurmas() {
+        const { data } = await _supabase.from('turmas').select('*').order('nome');
+        const list = document.getElementById('turmas-list');
+        
+        if (!data || data.length === 0) {
+            list.innerHTML = '<p>Nenhuma turma cadastrada.</p>';
+            return;
+        }
+
+        list.innerHTML = data.map(t => `
+            <div class="list-item">
+                <span>${t.nome}</span>
+                <button class="btn-danger" onclick="deleteTurma(${t.id})">Excluir</button>
+            </div>
+        `).join('');
+    }
+
+    async function addTurma() {
+        const input = document.getElementById('new-turma-input');
+        if (input.value.trim() !== '') {
+            await _supabase.from('turmas').insert([{ nome: input.value.trim() }]);
+            input.value = '';
+            loadTurmas();
+        }
+    }
+
+    async function deleteTurma(id) {
+        if (confirm('Deseja apagar esta turma?')) {
+            await _supabase.from('turmas').delete().eq('id', id);
+            loadTurmas();
+        }
+    }
+
+    // PERGUNTAS
+    async function loadPerguntas() {
+        const { data } = await _supabase.from('perguntas').select('*').order('id');
+        perguntasGlobais = data || [];
+        const list = document.getElementById('perguntas-list');
+
+        if (!data || data.length === 0) {
+            list.innerHTML = '<p>Nenhuma pergunta cadastrada.</p>';
+            return;
+        }
+
+        list.innerHTML = data.map(p => `
+            <div class="list-item">
+                <div>
+                    <small><strong>${p.secao}</strong></small><br>
+                    <span>${p.texto}</span>
+                </div>
+                <button class="btn-danger" onclick="deletePergunta(${p.id})">Excluir</button>
+            </div>
+        `).join('');
+    }
+
+    async function addPergunta() {
+        const secao = document.getElementById('new-secao-input').value.trim() || "OUTROS";
+        const texto = document.getElementById('new-pergunta-input').value.trim();
+
+        if (texto !== '') {
+            await _supabase.from('perguntas').insert([{ secao, texto }]);
+            document.getElementById('new-pergunta-input').value = '';
+            loadPerguntas();
+        }
+    }
+
+    async function deletePergunta(id) {
+        if (confirm('Deseja excluir esta pergunta?')) {
+            await _supabase.from('perguntas').delete().eq('id', id);
+            loadPerguntas();
+        }
+    }
+
+    // RESPOSTAS / RELATÓRIO
+    async function loadRespostas() {
+        const { data: registros } = await _supabase.from('registros').select('*').order('created_at', { ascending: false });
+        const container = document.getElementById('respostas-list');
+
+        if (!registros || registros.length === 0) {
+            container.innerHTML = '<p>Nenhum registro postado até o momento.</p>';
+            return;
+        }
+
+        container.innerHTML = registros.map(reg => `
+            <div class="response-card">
+                <div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
+                    <strong>Turma: ${reg.turma} | Componente: ${reg.componente}</strong>
+                    <span>Data: ${reg.data}</span>
+                </div>
+                <p style="margin-bottom: 10px;"><strong>Professor(a):</strong> ${reg.professor}</p>
+                <hr style="margin-bottom: 10px;">
+                ${Object.keys(reg.respostas).map(pId => {
+                    const perguntaObj = perguntasGlobais.find(p => p.id == pId);
+                    const perguntaTexto = perguntaObj ? perguntaObj.texto : 'Pergunta registrada';
+                    return `
+                        <p style="margin-bottom: 5px;"><strong>${perguntaTexto}</strong></p>
+                        <p style="background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #eee; margin-bottom: 10px;">
+                            ${reg.respostas[pId]}
+                        </p>
+                    `;
+                }).join('')}
+                <button class="btn-danger no-print" onclick="deleteRegistro(${reg.id})" style="padding: 4px 8px; font-size: 12px;">Apagar Registro</button>
+            </div>
+        `).join('');
+    }
+
+    async function deleteRegistro(id) {
+        if (confirm('Tem certeza que deseja apagar este registro?')) {
+            await _supabase.from('registros').delete().eq('id', id);
+            loadRespostas();
+        }
+    }
+
+    // --- PAINEL DO PROFESSOR ---
+    async function loadTeacherPanel() {
+        // Nome do professor logado automático
+        document.getElementById('prof-nome').value = currentUser.nome;
+
+        // Carregar Turmas no Dropdown
+        const { data: turmas } = await _supabase.from('turmas').select('*').order('nome');
+        const selectTurma = document.getElementById('select-turma');
+        selectTurma.innerHTML = '<option value="">Selecione a turma</option>' + 
+            (turmas || []).map(t => `<option value="${t.nome}">${t.nome}</option>`).join('');
+
+        // Carregar Perguntas
+        const { data: perguntas } = await _supabase.from('perguntas').select('*').order('id');
+        perguntasGlobais = perguntas || [];
+
+        const container = document.getElementById('form-perguntas-container');
+        let html = '';
+        let lastSecao = '';
+
+        perguntasGlobais.forEach(p => {
+            if (p.secao !== lastSecao) {
+                html += `<h4 style="margin-top:20px; color: var(--primary);">${p.secao}</h4>`;
+                lastSecao = p.secao;
+            }
+            html += `
+                <div class="form-group" style="margin-top: 10px;">
+                    <label for="q_${p.id}">${p.texto}</label>
+                    <textarea id="q_${p.id}" required></textarea>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        document.getElementById('data-registro').valueAsDate = new Date();
+    }
+
+    // Salvar Respostas do Professor
+    document.getElementById('pre-conselho-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const respostasMap = {};
+        perguntasGlobais.forEach(p => {
+            const field = document.getElementById(`q_${p.id}`);
+            if (field) {
+                respostasMap[p.id] = field.value;
+            }
+        });
+
+        const novoRegistro = {
+            turma: document.getElementById('select-turma').value,
+            professor: currentUser.nome,
+            componente: document.getElementById('componente').value,
+            data: document.getElementById('data-registro').value,
+            respostas: respostasMap
+        };
+
+        const { error } = await _supabase.from('registros').insert([novoRegistro]);
+
+        if (error) {
+            alert('Erro ao salvar registro: ' + error.message);
+        } else {
+            alert('Ocorrências registradas com sucesso no sistema!');
+            this.reset();
+            document.getElementById('prof-nome').value = currentUser.nome;
+            document.getElementById('data-registro').valueAsDate = new Date();
+        }
+    });
+</script>
+
+</body>
+</html>
